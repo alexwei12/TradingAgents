@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:akshare.akfamily.xyz)",
+      "WebFetch(domain:tushare.pro)",
+      "Bash(.venv/Scripts/activate:*)",
+      "Bash(uv pip install:*)",
+      "Bash(.venv/Scripts/activate.bat)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(uv pip:*)",
+      "Bash(source .venv/Scripts/activate)",
+      "Bash(python -c \"from tradingagents.graph.trading_graph import TradingAgentsGraph; print\\(''Import OK''\\)\")"
+    ]
+  }
+}

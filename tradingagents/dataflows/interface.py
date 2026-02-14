@@ -1,5 +1,23 @@
 from typing import Annotated
 
+# Import TradingContext for China stock routing
+from .trading_context import TradingContext
+
+# Import AKShare data functions
+from .akshare_data import (
+    get_stock_data as get_akshare_stock_data,
+    get_fundamentals as get_akshare_fundamentals,
+    get_balance_sheet as get_akshare_balance_sheet,
+    get_cashflow as get_akshare_cashflow,
+    get_income_statement as get_akshare_income_statement,
+    get_insider_transactions as get_akshare_insider_transactions,
+)
+from .akshare_indicators import get_indicators as get_akshare_indicators
+from .akshare_news import (
+    get_news as get_akshare_news,
+    get_global_news as get_akshare_global_news,
+)
+
 # Import from vendor-specific modules
 from .y_finance import (
     get_YFin_data_online,
@@ -63,6 +81,7 @@ TOOLS_CATEGORIES = {
 VENDOR_LIST = [
     "yfinance",
     "alpha_vantage",
+    "akshare",  # NEW: China A-share support
 ]
 
 # Mapping of methods to their vendor-specific implementations
@@ -71,41 +90,50 @@ VENDOR_METHODS = {
     "get_stock_data": {
         "alpha_vantage": get_alpha_vantage_stock,
         "yfinance": get_YFin_data_online,
+        "akshare": get_akshare_stock_data,
     },
     # technical_indicators
     "get_indicators": {
         "alpha_vantage": get_alpha_vantage_indicator,
         "yfinance": get_stock_stats_indicators_window,
+        "akshare": get_akshare_indicators,
     },
     # fundamental_data
     "get_fundamentals": {
         "alpha_vantage": get_alpha_vantage_fundamentals,
         "yfinance": get_yfinance_fundamentals,
+        "akshare": get_akshare_fundamentals,
     },
     "get_balance_sheet": {
         "alpha_vantage": get_alpha_vantage_balance_sheet,
         "yfinance": get_yfinance_balance_sheet,
+        "akshare": get_akshare_balance_sheet,
     },
     "get_cashflow": {
         "alpha_vantage": get_alpha_vantage_cashflow,
         "yfinance": get_yfinance_cashflow,
+        "akshare": get_akshare_cashflow,
     },
     "get_income_statement": {
         "alpha_vantage": get_alpha_vantage_income_statement,
         "yfinance": get_yfinance_income_statement,
+        "akshare": get_akshare_income_statement,
     },
     # news_data
     "get_news": {
         "alpha_vantage": get_alpha_vantage_news,
         "yfinance": get_news_yfinance,
+        "akshare": get_akshare_news,
     },
     "get_global_news": {
         "yfinance": get_global_news_yfinance,
         "alpha_vantage": get_alpha_vantage_global_news,
+        "akshare": get_akshare_global_news,
     },
     "get_insider_transactions": {
         "alpha_vantage": get_alpha_vantage_insider_transactions,
         "yfinance": get_yfinance_insider_transactions,
+        "akshare": get_akshare_insider_transactions,
     },
 }
 
@@ -133,6 +161,20 @@ def get_vendor(category: str, method: str = None) -> str:
 
 def route_to_vendor(method: str, *args, **kwargs):
     """Route method calls to appropriate vendor implementation with fallback support."""
+
+    # Check if current ticker is a China A-share - if so, force AKShare
+    if TradingContext.is_china_stock():
+        if method not in VENDOR_METHODS:
+            raise ValueError(f"Method '{method}' not supported")
+
+        if "akshare" not in VENDOR_METHODS[method]:
+            raise RuntimeError(f"AKShare does not support method '{method}'")
+
+        vendor_impl = VENDOR_METHODS[method]["akshare"]
+        impl_func = vendor_impl[0] if isinstance(vendor_impl, list) else vendor_impl
+        return impl_func(*args, **kwargs)
+
+    # Original routing logic for non-China stocks
     category = get_category_for_method(method)
     vendor_config = get_vendor(category, method)
     primary_vendors = [v.strip() for v in vendor_config.split(',')]

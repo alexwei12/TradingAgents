@@ -19,6 +19,7 @@ from tradingagents.agents.utils.agent_states import (
     RiskDebateState,
 )
 from tradingagents.dataflows.config import set_config
+from tradingagents.dataflows.trading_context import TradingContext
 
 # Import the new abstract tool methods from agent_utils
 from tradingagents.agents.utils.agent_utils import (
@@ -188,35 +189,42 @@ class TradingAgentsGraph:
 
         self.ticker = company_name
 
-        # Initialize state
-        init_agent_state = self.propagator.create_initial_state(
-            company_name, trade_date
-        )
-        args = self.propagator.get_graph_args()
+        # Set TradingContext for vendor routing
+        TradingContext.set_ticker(company_name)
 
-        if self.debug:
-            # Debug mode with tracing
-            trace = []
-            for chunk in self.graph.stream(init_agent_state, **args):
-                if len(chunk["messages"]) == 0:
-                    pass
-                else:
-                    chunk["messages"][-1].pretty_print()
-                    trace.append(chunk)
+        try:
+            # Initialize state
+            init_agent_state = self.propagator.create_initial_state(
+                company_name, trade_date
+            )
+            args = self.propagator.get_graph_args()
 
-            final_state = trace[-1]
-        else:
-            # Standard mode without tracing
-            final_state = self.graph.invoke(init_agent_state, **args)
+            if self.debug:
+                # Debug mode with tracing
+                trace = []
+                for chunk in self.graph.stream(init_agent_state, **args):
+                    if len(chunk["messages"]) == 0:
+                        pass
+                    else:
+                        chunk["messages"][-1].pretty_print()
+                        trace.append(chunk)
 
-        # Store current state for reflection
-        self.curr_state = final_state
+                final_state = trace[-1]
+            else:
+                # Standard mode without tracing
+                final_state = self.graph.invoke(init_agent_state, **args)
 
-        # Log state
-        self._log_state(trade_date, final_state)
+            # Store current state for reflection
+            self.curr_state = final_state
 
-        # Return decision and processed signal
-        return final_state, self.process_signal(final_state["final_trade_decision"])
+            # Log state
+            self._log_state(trade_date, final_state)
+
+            # Return decision and processed signal
+            return final_state, self.process_signal(final_state["final_trade_decision"])
+
+        finally:
+            TradingContext.clear()
 
     def _log_state(self, trade_date, final_state):
         """Log the final state to a JSON file."""
